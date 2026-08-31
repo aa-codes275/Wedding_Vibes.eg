@@ -4,8 +4,6 @@ const MEDIA = [
   { type: "video", src: CDN + "IMG_2602.MP4" },
   { type: "video", src: CDN + "IMG_2601.MP4" },
   { type: "video", src: CDN + "IMG_2605.MP4" },
-  { type: "video", src: CDN + "IMG_2604.MP4" },
-  { type: "video", src: CDN + "IMG_2603_(0).MP4" },
 
   { type: "photo", src: CDN + "photographer.jpg" },
   { type: "video", src: CDN + "v2.mp4" },
@@ -312,7 +310,7 @@ function initCamera() {
 }
 
 /* ---------- booking -> WhatsApp ---------- */
-const PHONE = "201002285305";
+const PHONE = "201103668641";
 document.addEventListener("submit", (e) => {
   if (e.target.id !== "bookForm") return;
   e.preventDefault();
