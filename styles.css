@@ -30,23 +30,6 @@ a{color:inherit;text-decoration:none}
   background-size:auto,26px 26px,34px 34px;
 }
 
-/* ---------- intro zoom ---------- */
-#intro{
-  position:fixed;inset:0;z-index:100;background:var(--paper);
-  display:grid;place-items:center;transform-origin:center;
-  animation:introZoom 2.6s cubic-bezier(.22,.85,.24,1) forwards;
-}
-#intro img{width:min(70vw,520px);transform:scale(1);}
-@keyframes introZoom{
-  0%{transform:scale(6);filter:blur(6px);opacity:1}
-  55%{transform:scale(1.6);filter:blur(0);opacity:1}
-  85%{transform:scale(1);opacity:1}
-  100%{transform:scale(1);opacity:0;visibility:hidden}
-}
-body.zooming{overflow:hidden}
-.reveal{animation:pageIn 1s .1s both cubic-bezier(.2,.7,.2,1)}
-@keyframes pageIn{from{opacity:0;transform:scale(1.06)}to{opacity:1;transform:scale(1)}}
-
 /* ---------- nav ---------- */
 .nav{
   position:sticky;top:0;z-index:40;display:grid;
@@ -80,15 +63,18 @@ body.zooming{overflow:hidden}
 }
 .hero-inner{text-align:center;padding:26px 18px 70px;max-width:820px}
 .kicker{letter-spacing:.24em;font-size:clamp(9px,2.6vw,12px);color:var(--wine);font-weight:800;margin:0 0 16px}
-.portrait-wrap{position:relative;width:clamp(160px,44vw,240px);margin:0 auto 18px}
+.portrait-wrap{
+  position: relative;
+  width: 130px;
+  margin: 0 auto 18px;
+}
 .portrait{
   width:100%;aspect-ratio:1/1;object-fit:cover;object-position:50% 22%;border-radius:50%;
   border:3px solid var(--paper);box-shadow:var(--shadow);position:relative;z-index:2
 }
-.portrait-wrap{
-  position: relative;
-  width: 130px; /* دي اللي هتصغر حجم الدايرة والصورة مع بعض (تقدر تغير الرقم لـ 100px أو 120px مثلاً) */
-  margin: 0 auto 18px;
+.portrait-ring{
+  position:absolute;inset:-12px;border-radius:50%;
+  border:1px dashed var(--wine);opacity:.55;animation:spin 24s linear infinite
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 .title{font-family:var(--serif);font-weight:600;font-size:clamp(34px,10vw,78px);line-height:1;margin:6px 0 10px;color:var(--wine);letter-spacing:-.01em}
