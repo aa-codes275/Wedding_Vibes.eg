@@ -132,26 +132,140 @@ a{color:inherit;text-decoration:none}
 .stats b{font-family:var(--serif);font-size:30px;color:var(--wine)}
 .stats span{font-size:12px;color:var(--muted)}
 
-/* ---------- camera ---------- */
-.cam-zone{padding:clamp(24px,6vw,60px) 14px;text-align:center}
-.cam-hint{color:var(--muted);font-size:13px;margin:6px 0 14px}
-.cam-stage{
-  position:relative;height:min(60svh,420px);border-radius:22px;overflow:hidden;
-  border:1px solid var(--line);
-  background:
-    repeating-linear-gradient(45deg,rgba(0,0,0,.05) 0 1px,transparent 1px 12px),
-    linear-gradient(160deg,#fff,var(--paper-2));
-  touch-action:none;max-width:1100px;margin:0 auto
+/* ---------- CINEMATIC 3D CAMERA (Apple-ad style) ---------- */
+.cam-zone{
+  padding:clamp(34px,8vw,90px) 14px clamp(30px,7vw,70px);
+  text-align:center;background:linear-gradient(180deg,#0b0708,#161011 45%,#0b0708);
+  color:#f6efee;margin:0 0 10px;
 }
-.cam{position:absolute;top:42%;left:50%;translate:-50% -50%;width:clamp(170px,42vw,300px);cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;will-change:transform}
-.cam:active{cursor:grabbing}
-.cam-photo{width:100%;display:block;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 26px 26px rgba(0,0,0,.45)) contrast(1.05)}
-.cam-flash{position:absolute;top:8%;left:50%;translate:-50% 0;width:26%;height:8%;border-radius:6px;background:transparent;opacity:0;transition:opacity .08s}
-.cam-flash.on{opacity:1;background:#fff;box-shadow:0 0 60px 26px #fff}
-.flash-overlay{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .08s}
+.cam-kicker{letter-spacing:.32em;font-size:11px;font-weight:800;color:#e2a3ad;margin:0 0 10px}
+.cam-title{font-family:var(--serif);font-size:clamp(28px,8vw,56px);margin:0;color:#fff;letter-spacing:-.01em}
+.cam-hint{color:rgba(255,255,255,.62);font-size:13px;margin:10px auto 22px;max-width:520px;line-height:1.9}
+
+.cam-stage{
+  position:relative;height:min(64svh,460px);max-width:1100px;margin:0 auto;
+  border-radius:28px;overflow:hidden;touch-action:none;
+  background:radial-gradient(120% 90% at 50% 8%,#2a1d20 0%,#150e10 45%,#080506 100%);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 40px 80px -50px #000;
+}
+.cam-spot{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(45% 40% at 50% 32%,rgba(255,235,235,.20),transparent 70%);
+}
+.cam-floor{
+  position:absolute;left:50%;bottom:16%;translate:-50% 0;width:52%;height:26px;
+  background:radial-gradient(50% 50% at 50% 50%,rgba(0,0,0,.75),transparent 70%);
+  filter:blur(6px);pointer-events:none
+}
+.cam-scene{
+  position:absolute;inset:0;display:grid;place-items:center;
+  perspective:1100px;perspective-origin:50% 45%;
+}
+.cam3d{
+  --w:clamp(190px,46vw,320px);
+  --d:calc(var(--w) * .26);
+  position:relative;width:var(--w);height:calc(var(--w) * .60);
+  transform-style:preserve-3d;cursor:grab;
+  transform:rotateX(-8deg) rotateY(26deg);
+  animation:camSpin 24s linear infinite;will-change:transform
+}
+.cam3d.grabbing{cursor:grabbing}
+.cam3d.manual{animation:none}
+@keyframes camSpin{
+  from{transform:rotateX(-8deg) rotateY(0deg)}
+  to{transform:rotateX(-8deg) rotateY(360deg)}
+}
+.cam-body{position:absolute;inset:0;transform-style:preserve-3d}
+.cam-body .face{
+  position:absolute;border-radius:12px;
+  background:linear-gradient(160deg,#3d3739,#1b1719 55%,#0d0b0c);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -14px 22px rgba(0,0,0,.5);
+}
+.cam-body .front,.cam-body .back{width:100%;height:100%}
+.cam-body .front{transform:translateZ(calc(var(--d) / 2))}
+.cam-body .back{transform:rotateY(180deg) translateZ(calc(var(--d) / 2));
+  background:linear-gradient(160deg,#2c2729,#131011)}
+.cam-body .left,.cam-body .right{width:var(--d);height:100%;left:calc(50% - var(--d) / 2)}
+.cam-body .left{transform:rotateY(-90deg) translateZ(calc(var(--w) / 2))}
+.cam-body .right{transform:rotateY(90deg) translateZ(calc(var(--w) / 2))}
+.cam-body .top,.cam-body .bottom{width:100%;height:var(--d);top:calc(50% - var(--d) / 2)}
+.cam-body .top{transform:rotateX(90deg) translateZ(calc(var(--w) * .30));
+  background:linear-gradient(160deg,#494345,#211d1f)}
+.cam-body .bottom{transform:rotateX(-90deg) translateZ(calc(var(--w) * .30));
+  background:linear-gradient(160deg,#141112,#0a0809)}
+
+.cam-grip{
+  position:absolute;left:5%;top:10%;width:19%;height:80%;border-radius:12px;
+  background:linear-gradient(150deg,#4a4245,#221d1f);
+  transform:translateZ(calc(var(--d) / 2 + 1px));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)
+}
+.cam-evf{
+  position:absolute;left:50%;top:-14%;translate:-50% 0;width:30%;height:20%;border-radius:8px;
+  background:linear-gradient(160deg,#3b3538,#141112)
+}
+.cam-hotshoe{
+  position:absolute;left:50%;top:-20%;translate:-50% 0;width:14%;height:7%;border-radius:3px;
+  background:linear-gradient(#8e8a8b,#4a4547)
+}
+.cam-brand{
+  position:absolute;left:28%;bottom:10%;font-family:var(--serif);font-size:calc(var(--w) * .055);
+  color:rgba(255,255,255,.85);transform:translateZ(calc(var(--d) / 2 + 2px));
+  text-shadow:0 1px 2px rgba(0,0,0,.75)
+}
+.cam-rec{
+  position:absolute;left:30%;top:9%;display:flex;align-items:center;gap:5px;
+  font-size:calc(var(--w) * .04);font-weight:800;letter-spacing:.1em;color:#ffdfe3;
+  transform:translateZ(calc(var(--d) / 2 + 2px))
+}
+.cam-rec i{width:6px;height:6px;border-radius:50%;background:#ff3b46;box-shadow:0 0 10px #ff3b46;animation:recBlink 1.4s infinite}
+@keyframes recBlink{50%{opacity:.25}}
+.cam-flashlamp{
+  position:absolute;left:50%;top:-6%;translate:-50% 0;width:26%;height:6%;border-radius:6px;
+  background:#fff;opacity:0;transition:opacity .08s
+}
+.cam-flashlamp.on{opacity:1;box-shadow:0 0 70px 30px rgba(255,255,255,.95)}
+
+.cam-lens{
+  position:absolute;left:50%;top:50%;translate:-50% -50%;
+  width:calc(var(--w) * .40);height:calc(var(--w) * .40);
+  transform-style:preserve-3d
+}
+.cam-lens .ring{
+  position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,#5c5456,#221e1f,#4e4749,#171415,#5c5456);
+  box-shadow:inset 0 0 12px rgba(0,0,0,.85)
+}
+.cam-lens .r1{transform:translateZ(calc(var(--d) / 2 + 2px))}
+.cam-lens .r2{transform:translateZ(calc(var(--d) / 2 + var(--w) * .05)) scale(.95)}
+.cam-lens .r3{transform:translateZ(calc(var(--d) / 2 + var(--w) * .10)) scale(.91)}
+.cam-lens .r4{transform:translateZ(calc(var(--d) / 2 + var(--w) * .14)) scale(.87)}
+.cam-lens .glass{
+  position:absolute;inset:16%;border-radius:50%;
+  transform:translateZ(calc(var(--d) / 2 + var(--w) * .145));
+  background:
+    radial-gradient(35% 30% at 32% 26%,rgba(255,255,255,.85),transparent 60%),
+    radial-gradient(60% 60% at 65% 70%,rgba(122,18,32,.55),transparent 70%),
+    radial-gradient(circle at 50% 50%,#12233a 0%,#04070d 70%);
+  box-shadow:inset 0 0 24px rgba(0,0,0,.9),0 0 26px rgba(120,180,255,.2)
+}
+
+.flash-overlay{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .1s}
 .flash-overlay.fire{opacity:.95;transition:none}
-.shot-toast{position:absolute;bottom:14px;left:50%;translate:-50% 0;background:var(--wine);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .3s,transform .3s}
+.shot-toast{
+  position:absolute;bottom:14px;left:50%;translate:-50% 0;background:var(--wine);color:#fff;
+  padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .3s,transform .3s
+}
 .shot-toast.show{opacity:1;transform:translateY(-4px)}
+.cam-specs{
+  position:absolute;inset-inline:0;bottom:0;display:flex;justify-content:center;gap:clamp(10px,4vw,34px);
+  padding:12px;font-size:11px;color:rgba(255,255,255,.6);letter-spacing:.06em;flex-wrap:wrap
+}
+.cam-specs b{color:#fff;font-family:var(--serif);font-size:14px;margin-inline-end:4px}
+@media (prefers-reduced-motion:reduce){
+  .cam3d{animation:none}
+}
 
 /* ---------- booking ---------- */
 .booking{padding:clamp(24px,6vw,70px) clamp(14px,5vw,60px) 80px}
@@ -186,3 +300,32 @@ html[dir="ltr"] body{font-family:var(--sans)}
 /* readability over clearer video bg */
 .hero-inner .kicker,.hero-inner .lede,.hero .title{text-shadow:0 2px 16px rgba(251,248,246,.9),0 1px 3px rgba(251,248,246,.95)}
 .hero-inner .lede{color:#2a2020}
+/* ---------- PERFORMANCE / MOBILE SPEED ---------- */
+.hero-poster{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;
+  filter:contrast(1.06) saturate(1.04);transition:opacity .5s ease
+}
+.hero-bg{opacity:0;transition:opacity .6s ease}
+.hero-bg.ready{opacity:1}
+
+.hero.video-on .hero-poster{opacity:0}
+
+/* لا نرسم الأقسام غير الظاهرة = فتح أسرع على الموبايل */
+.services,.booking,.about,.cam-zone,.masonry{content-visibility:auto;contain-intrinsic-size:auto 700px}
+.tile{background:#120e0f}
+.tile img,.tile video{background:#120e0f}
+
+/* زر الصوت داخل الفيديو المفتوح */
+.lb-body{position:relative;display:grid;place-items:center}
+.lb-sound{
+  position:absolute;bottom:14px;inset-inline-start:14px;z-index:2;
+  background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.35);color:#fff;
+  border-radius:999px;padding:9px 16px;font-family:var(--sans);font-size:13px;font-weight:700;
+  cursor:pointer;backdrop-filter:blur(6px)
+}
+.lb-sound:active{transform:scale(.96)}
+
+/* على الموبايل: مفيش تشغيل تلقائي لكل فيديوهات المعرض */
+@media (max-width:760px){
+  .tile:hover video,.tile:hover img{transform:none}
+}
