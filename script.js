@@ -121,7 +121,7 @@ function initCamera() {
   const toast = document.getElementById("shotToast");
   if (!stage || !cam) return;
 
-  let x = 0, y = 0, vx = 0, vy = 0, tilt = 0, dragging = false, px = 0, py = 0, lastT = 0;
+  let x = 0, y = 0, vx = 0, vy = 0, tilt = 0, dragging = false, px = 0, py = 0;
 
   const apply = () => { cam.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg)`; };
 
@@ -133,7 +133,7 @@ function initCamera() {
   function down(e) {
     dragging = true;
     const p = e.touches ? e.touches[0] : e;
-    px = p.clientX; py = p.clientY; lastT = performance.now();
+    px = p.clientX; py = p.clientY;
     cam.setPointerCapture?.(e.pointerId);
   }
   function move(e) {
@@ -236,13 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initCamera();
   route();
 
-  document.body.classList.add("zooming");
-  setTimeout(() => {
-    document.body.classList.remove("zooming");
-    document.getElementById("intro")?.remove();
-    document.querySelectorAll(".page.active").forEach((p) => p.classList.add("reveal"));
-  }, 2600);
-
+  // تشغيل فيديو الهيرو فوراً بدون أي تأخير
   const v = document.getElementById("heroVideo");
   v && v.play().catch(() => {});
 });
