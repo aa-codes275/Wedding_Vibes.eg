@@ -1,4 +1,4 @@
-/* Wedding_Vibes.eg — single-file app logic */
+/* Wedding_Vibes.eg — single-file app logic (fast mobile build) */
 const CDN = "assets/";
 const MEDIA = [
   { type: "video", src: CDN + "IMG_2602.MP4" },
@@ -16,6 +16,12 @@ const MEDIA = [
   { type: "video", src: CDN + "v5.mp4" },
   { type: "video", src: CDN + "v6.mp4" },
 ];
+
+/* ---------- device / network hints ---------- */
+const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+const SLOW_NET = !!conn && (/(^|-)2g$/.test(conn.effectiveType || "") || conn.saveData === true);
+const IS_MOBILE = matchMedia("(max-width:760px)").matches;
+const idle = (fn) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1200 }) : setTimeout(fn, 200));
 
 /* ---------- i18n ---------- */
 const EN = {
@@ -36,8 +42,9 @@ const EN = {
   about_p1: "A photographer and videographer specialised in weddings, events and art production. Experienced in full-day coverage with professional cameras and gimbals, plus cinematic editing and grading that turns every frame into a memory.",
   about_p2: "My work is built on feeling before gear: I read the moment, wait for the real smile, and frame it so you come back to watch it every year.",
   st1: "Events", st2: "Years of experience", st3: "Capture quality",
-  cam_title: "Try the camera",
-  cam_hint: "Drag the camera anywhere — tap once for the flash and shutter sound, double-tap to take a shot.",
+  cam_kicker: "CINEMA LINE • 4K HDR",
+  cam_title: "The camera that tells your story",
+  cam_hint: "Drag to spin the camera 360° — tap once for the flash and shutter sound, double-tap to take a shot.",
   shot: "📸 Shot captured!",
   book_title: "Book your event",
   lb_name: "Name", lb_type: "Event type", lb_date: "Date", lb_place: "Location", lb_notes: "More details",
@@ -46,9 +53,7 @@ const EN = {
 };
 const AR = {};
 function cacheAR() {
-  document.querySelectorAll("[data-i18n]").forEach((el) => {
-    AR[el.dataset.i18n] = el.textContent;
-  });
+  document.querySelectorAll("[data-i18n]").forEach((el) => { AR[el.dataset.i18n] = el.textContent; });
 }
 let lang = "ar";
 function setLang(l) {
@@ -70,114 +75,210 @@ function route() {
   const id = pages[path] || "page-home";
   document.querySelectorAll(".page").forEach((p) => p.classList.toggle("active", p.id === id));
   document.querySelectorAll(".links a").forEach((a) => a.classList.toggle("active", a.dataset.nav === path));
-  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  stopAllTileVideos();
+  window.scrollTo({ top: 0, behavior: "auto" });
+  if (id === "page-work") idle(buildGalleryOnce);
 }
 window.addEventListener("hashchange", route);
 
+/* ---------- hero video: بعد ظهور الصفحة، ومش على النت البطيء ---------- */
+function initHero() {
+  const hero = document.querySelector(".hero");
+  const v = document.getElementById("heroVideo");
+  const poster = document.getElementById("heroPoster");
+  if (poster) poster.addEventListener("error", () => { poster.src = CDN + "shot1.jpg"; }, { once: true });
+  if (!v) return;
+  if (SLOW_NET) return; // نكتفي بالصورة على النت الضعيف
+  const start = () => {
+    if (v.dataset.loaded) return;
+    v.dataset.loaded = "1";
+    v.src = v.dataset.src;
+    v.load();
+    v.addEventListener("loadeddata", () => {
+      v.classList.add("ready");
+      hero.classList.add("video-on");
+      v.play().catch(() => {});
+    }, { once: true });
+  };
+  if (document.readyState === "complete") idle(start);
+  else window.addEventListener("load", () => idle(start), { once: true });
+
+  // وقف الفيديو لما نبعد عن الهيرو = بطارية وأداء أفضل
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver((es) => es.forEach((e) => {
+      if (!v.dataset.loaded) return;
+      e.isIntersecting ? v.play().catch(() => {}) : v.pause();
+    }), { threshold: 0.05 }).observe(hero);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) v.pause();
+    else if (v.dataset.loaded && document.getElementById("page-home").classList.contains("active")) v.play().catch(() => {});
+  });
+}
+
 /* ---------- gallery ---------- */
+let galleryBuilt = false;
+function buildGalleryOnce() { if (!galleryBuilt) { galleryBuilt = true; buildGallery(); } }
+function stopAllTileVideos() {
+  document.querySelectorAll("#gallery video").forEach((v) => { v.pause(); v.muted = true; });
+}
 function buildGallery(filter = "all") {
   const g = document.getElementById("gallery");
+  if (!g) return;
   g.innerHTML = "";
   MEDIA.filter((m) => filter === "all" || m.type === filter).forEach((m) => {
     const t = document.createElement("figure");
     t.className = "tile";
-    t.innerHTML =
-      m.type === "video"
-        ? `<video src="${m.src}" muted loop playsinline preload="metadata"></video><span class="tag">VIDEO</span>`
-        : `<img src="${m.src}" alt="Wedding Vibes work" loading="lazy" /><span class="tag">PHOTO</span>`;
     if (m.type === "video") {
+      // preload=none + بوستر: مفيش تحميل ثقيل عند فتح الصفحة
+      t.innerHTML = `<video muted loop playsinline preload="none" data-src="${m.src}"
+        poster="${CDN}shot1.jpg" width="480" height="854"></video><span class="tag">VIDEO</span>`;
       const v = t.querySelector("video");
-      t.addEventListener("mouseenter", () => v.play().catch(() => {}));
-      t.addEventListener("mouseleave", () => v.pause());
-      const io = new IntersectionObserver((e) => e.forEach((x) => (x.isIntersecting ? v.play().catch(() => {}) : v.pause())), { threshold: 0.5 });
-      io.observe(t);
+      const load = () => {
+        if (v.dataset.loaded) return;
+        v.dataset.loaded = "1";
+        v.src = v.dataset.src;
+      };
+      if (!IS_MOBILE) {
+        t.addEventListener("mouseenter", () => { load(); v.play().catch(() => {}); });
+        t.addEventListener("mouseleave", () => v.pause());
+      }
+      if (!SLOW_NET && "IntersectionObserver" in window) {
+        const io = new IntersectionObserver((es) => es.forEach((x) => {
+          if (x.isIntersecting) { load(); v.play().catch(() => {}); }
+          else v.pause();
+        }), { threshold: 0.6 });
+        io.observe(t);
+      }
+    } else {
+      t.innerHTML = `<img src="${m.src}" alt="Wedding Vibes work" loading="lazy" decoding="async" /><span class="tag">PHOTO</span>`;
     }
     t.addEventListener("click", () => openLightbox(m));
     g.appendChild(t);
   });
 }
+
+/* ---------- lightbox: الفيديو يفتح ميوت + زر للصوت + يسكت عند الخروج ---------- */
+let lb;
+function closeLightbox() {
+  if (!lb) return;
+  const v = lb.querySelector("video");
+  if (v) { v.muted = true; v.pause(); v.removeAttribute("src"); v.load(); }
+  lb.classList.remove("open");
+  lb.querySelector(".lb-body").innerHTML = "";
+  stopAllTileVideos();
+}
 function openLightbox(m) {
-  let lb = document.querySelector(".lightbox");
+  stopAllTileVideos();
   if (!lb) {
     lb = document.createElement("div");
     lb.className = "lightbox";
     lb.innerHTML = `<span class="close">×</span><div class="lb-body"></div>`;
-    lb.addEventListener("click", (e) => { if (e.target === lb || e.target.className === "close") lb.classList.remove("open"); });
+    lb.addEventListener("click", (e) => {
+      if (e.target === lb || e.target.classList.contains("close")) closeLightbox();
+    });
     document.body.appendChild(lb);
   }
-  lb.querySelector(".lb-body").innerHTML =
-    m.type === "video"
-      ? `<video src="${m.src}" controls autoplay playsinline></video>`
-      : `<img src="${m.src}" alt="" />`;
+  const body = lb.querySelector(".lb-body");
+  if (m.type === "video") {
+    body.innerHTML = `<video src="${m.src}" controls autoplay playsinline muted preload="auto"></video>
+      <button class="lb-sound" type="button">🔇 ${lang === "en" ? "Tap for sound" : "اضغط لتشغيل الصوت"}</button>`;
+    const v = body.querySelector("video");
+    const btn = body.querySelector(".lb-sound");
+    v.muted = true;
+    v.play().catch(() => {});
+    const sync = () => {
+      btn.textContent = v.muted
+        ? (lang === "en" ? "🔇 Tap for sound" : "🔇 اضغط لتشغيل الصوت")
+        : (lang === "en" ? "🔊 Mute" : "🔊 كتم الصوت");
+    };
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      v.muted = !v.muted;
+      if (!v.muted) { v.volume = 1; v.play().catch(() => {}); }
+      sync();
+    });
+    v.addEventListener("volumechange", sync);
+    sync();
+  } else {
+    body.innerHTML = `<img src="${m.src}" alt="" />`;
+  }
   lb.classList.add("open");
 }
+window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) closeLightbox(); });
 
-/* ---------- interactive HD camera ---------- */
+/* ---------- 3D cinematic camera (drag to spin, tap for flash) ---------- */
 function initCamera() {
   const stage = document.getElementById("camStage");
-  const cam = document.getElementById("cam");
+  const cam = document.getElementById("cam3d");
   const flash = document.getElementById("flashOverlay");
-  const flashLamp = cam.querySelector(".cam-flash");
+  const lamp = document.getElementById("camLamp");
   const toast = document.getElementById("shotToast");
   if (!stage || !cam) return;
 
-  let x = 0, y = 0, vx = 0, vy = 0, tilt = 0, dragging = false, px = 0, py = 0;
+  let ry = 24, rx = -10, vel = 0, dragging = false, px = 0, py = 0, moved = 0, raf = 0, manual = false;
 
-  const apply = () => { cam.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg)`; };
+  const apply = () => { cam.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`; };
 
-  const bounds = () => {
-    const s = stage.getBoundingClientRect(), c = cam.getBoundingClientRect();
-    return { maxX: (s.width - c.width) / 2 - 8, maxY: (s.height - c.height) / 2 - 8 };
-  };
-
-  function down(e) {
-    dragging = true;
-    const p = e.touches ? e.touches[0] : e;
-    px = p.clientX; py = p.clientY;
-    cam.setPointerCapture?.(e.pointerId);
-  }
-  function move(e) {
-    if (!dragging) return;
-    e.preventDefault();
-    const p = e.touches ? e.touches[0] : e;
-    const dx = p.clientX - px, dy = p.clientY - py;
-    px = p.clientX; py = p.clientY;
-    const b = bounds();
-    x = Math.max(-b.maxX, Math.min(b.maxX, x + dx));
-    y = Math.max(-b.maxY, Math.min(b.maxY, y + dy));
-    vx = dx; vy = dy;
-    tilt = Math.max(-24, Math.min(24, dx * 1.6));
-    apply();
-  }
-  function up() { dragging = false; }
-
-  cam.addEventListener("pointerdown", down);
-  window.addEventListener("pointermove", move, { passive: false });
-  window.addEventListener("pointerup", up);
-
-  // inertia + tilt easing
-  (function loop() {
+  function loop() {
+    raf = 0;
     if (!dragging) {
-      const b = bounds();
-      vx *= 0.92; vy *= 0.92;
-      if (Math.abs(vx) > 0.1 || Math.abs(vy) > 0.1) {
-        x = Math.max(-b.maxX, Math.min(b.maxX, x + vx));
-        y = Math.max(-b.maxY, Math.min(b.maxY, y + vy));
-      }
-      tilt *= 0.9;
-      apply();
+      vel *= 0.94;
+      if (Math.abs(vel) > 0.02) { ry += vel; apply(); raf = requestAnimationFrame(loop); return; }
+    } else {
+      raf = requestAnimationFrame(loop);
     }
-    requestAnimationFrame(loop);
-  })();
+  }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
 
-  // shutter sound (WebAudio, no asset needed)
+  cam.addEventListener("pointerdown", (e) => {
+    dragging = true; moved = 0; manual = true;
+    cam.classList.add("manual", "grabbing");
+    px = e.clientX; py = e.clientY;
+    cam.setPointerCapture?.(e.pointerId);
+    apply();
+    kick();
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - px, dy = e.clientY - py;
+    px = e.clientX; py = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    ry += dx * 0.5;
+    rx = Math.max(-40, Math.min(30, rx - dy * 0.25));
+    vel = dx * 0.5;
+    apply();
+  }, { passive: true });
+  window.addEventListener("pointerup", () => {
+    if (!dragging) return;
+    dragging = false;
+    cam.classList.remove("grabbing");
+    kick();
+  });
+
+  // إضاءة/ميلان خفيف مع السكرول (إحساس إعلان أبل)
+  if ("IntersectionObserver" in window) {
+    let visible = false;
+    new IntersectionObserver((es) => es.forEach((x) => (visible = x.isIntersecting)), { threshold: 0.15 }).observe(stage);
+    window.addEventListener("scroll", () => {
+      if (!visible || manual || dragging) return;
+      const r = stage.getBoundingClientRect();
+      const p = 1 - Math.min(1, Math.max(0, (r.top + r.height / 2) / innerHeight));
+      cam.style.setProperty("--w", "");
+      stage.style.setProperty("--glow", p.toFixed(2));
+    }, { passive: true });
+  }
+
+  /* shutter sound (WebAudio) */
   let ctx;
   function shutter() {
     try {
       ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
       const now = ctx.currentTime;
       const burst = (t, dur, gainV) => {
-        const b = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+        const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
         const d = b.getChannelData(0);
         for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
         const s = ctx.createBufferSource(); s.buffer = b;
@@ -190,14 +291,17 @@ function initCamera() {
       burst(now + 0.09, 0.06, 0.35);
     } catch (_) {}
   }
-
   function fireFlash() {
     flash.classList.add("fire");
-    flashLamp.classList.add("on");
-    setTimeout(() => { flash.classList.remove("fire"); flashLamp.classList.remove("on"); }, 110);
+    lamp.classList.add("on");
+    setTimeout(() => { flash.classList.remove("fire"); lamp.classList.remove("on"); }, 110);
   }
 
-  cam.addEventListener("click", (e) => { e.preventDefault(); fireFlash(); shutter(); });
+  cam.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (moved > 12) return; // كانت سحب مش ضغطة
+    fireFlash(); shutter();
+  });
   cam.addEventListener("dblclick", (e) => {
     e.preventDefault();
     fireFlash(); shutter();
@@ -214,14 +318,14 @@ document.addEventListener("submit", (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
   const msg =
-    (lang === "en"
+    lang === "en"
       ? `New booking request%0AName: ${f.get("name")}%0AType: ${f.get("type")}%0ADate: ${f.get("date")}%0ALocation: ${f.get("place") || "-"}%0ANotes: ${f.get("notes") || "-"}`
-      : `طلب حجز جديد%0Aالاسم: ${f.get("name")}%0Aالمناسبة: ${f.get("type")}%0Aالتاريخ: ${f.get("date")}%0Aالمكان: ${f.get("place") || "-"}%0Aتفاصيل: ${f.get("notes") || "-"}`);
+      : `طلب حجز جديد%0Aالاسم: ${f.get("name")}%0Aالمناسبة: ${f.get("type")}%0Aالتاريخ: ${f.get("date")}%0Aالمكان: ${f.get("place") || "-"}%0Aتفاصيل: ${f.get("notes") || "-"}`;
   window.open(`https://wa.me/${PHONE}?text=${msg}`, "_blank");
 });
 
 /* ---------- boot ---------- */
-document.addEventListener("DOMContentLoaded", () => {
+function boot() {
   cacheAR();
   document.getElementById("yr").textContent = new Date().getFullYear();
   document.getElementById("langBtn").addEventListener("click", () => setLang(lang === "ar" ? "en" : "ar"));
@@ -229,14 +333,13 @@ document.addEventListener("DOMContentLoaded", () => {
     c.addEventListener("click", () => {
       document.querySelectorAll(".filters .chip").forEach((o) => o.classList.remove("active"));
       c.classList.add("active");
+      galleryBuilt = true;
       buildGallery(c.dataset.filter);
     })
   );
-  buildGallery();
-  initCamera();
   route();
-
-  // تشغيل فيديو الهيرو فوراً بدون أي تأخير
-  const v = document.getElementById("heroVideo");
-  v && v.play().catch(() => {});
-});
+  initHero();
+  idle(() => { buildGalleryOnce(); initCamera(); });
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+else boot();
